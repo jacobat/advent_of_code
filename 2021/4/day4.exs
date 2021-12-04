@@ -29,33 +29,18 @@ defmodule Day4 do
 
   def win(numbers, board) do
     Enum.find(board, fn rowcol ->
-      (MapSet.intersection(rowcol, numbers) == rowcol)
+      MapSet.intersection(rowcol, numbers) == rowcol
     end)
   end
 
-  def numbers_to_win do
-    Enum.reduce_while(numbers(), [], fn n, acc ->
-      new_acc = [n | acc]
-      if Enum.any?(boards(), &win(MapSet.new(new_acc), &1)) do
-        {:halt, new_acc}
-      else
-        {:cont, new_acc}
-      end
-    end)
-  end
-
-  def winning_board(numbers) do
-    Enum.find(boards(), &win(MapSet.new(numbers), &1))
-  end
-
-  def losing_board do
+  def find_board(remaining_losing_boards) do
     Enum.reduce_while(numbers(), {[],boards()}, fn n, {ns,bs} ->
       new_ns = [n | ns]
-      new_bs = Enum.reject(bs, fn board -> win(MapSet.new(new_ns), board) end)
-      if Enum.count(bs) == 1 && win(MapSet.new(new_ns), List.first(bs)) do
-        {:halt, {new_ns, List.first(bs)}}
+      { winning_boards, losing_boards } = Enum.split_with(bs, &win(MapSet.new(new_ns), &1))
+      if Enum.count(losing_boards) == remaining_losing_boards do
+        {:halt, {new_ns, List.first(winning_boards)}}
       else
-        {:cont, {new_ns, new_bs}}
+        {:cont, {new_ns, losing_boards}}
       end
     end)
   end
@@ -65,18 +50,18 @@ defmodule Day4 do
     |> MapSet.difference(MapSet.new(numbers))
   end
 
-  def first do
-    winning_board(numbers_to_win())
-    |> unmarked_numbers(numbers_to_win())
-    |> Enum.sum
-    |> then(fn sum -> List.first(numbers_to_win()) * sum end)
-  end
-
-  def second do
-    { numbers_drawn, board } = losing_board()
+  def calc_score({ numbers_drawn, board }) do
     unmarked_numbers(board, MapSet.new(numbers_drawn))
     |> Enum.sum
     |> then(fn sum -> List.first(numbers_drawn) * sum end)
+  end
+
+  def first do
+    find_board(Enum.count(boards()) - 1) |> calc_score
+  end
+
+  def second do
+    find_board(0) |> calc_score
   end
 
   def run do
