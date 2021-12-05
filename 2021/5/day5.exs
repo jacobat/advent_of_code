@@ -1,22 +1,18 @@
 defmodule Day5 do
+  @parser ~r/([0-9]+),([0-9]+) -> ([0-9]+),([0-9]+)/
+
   def input do
     File.read!("input")
     # File.read!("test")
-    |> String.split("\n")
-    |> Enum.map(&parse_line/1)
+    |> parse_line
   end
 
   def parse_line(string) do
-    string
-    |> String.split(" -> ")
-    |> Enum.map(&parse_coord/1)
-    |> Enum.sort
-  end
-
-  def parse_coord(string) do
-    string
-    |> String.split(",")
+    Regex.scan(@parser, string, capture: :all_but_first)
+    |> List.flatten
     |> Enum.map(&String.to_integer/1)
+    |> Enum.chunk_every(2)
+    |> Enum.chunk_every(2)
   end
 
   def diagonal?([[x0, y0], [x1, y1]]), do: x0 != x1 && y0 != y1
