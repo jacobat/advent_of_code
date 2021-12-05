@@ -23,19 +23,11 @@ defmodule Day5 do
 
   def remove_diagonals(lines), do: Enum.reject(lines, &diagonal?/1)
 
-  def expand_diagonal([[x0, y0], [x1, y1]]) do
-    if y0 < y1 do
-      for x <- x0..x1, do: [x, y0 + x - x0]
-    else
-      for x <- x0..x1, do: [x, y0 - x + x0]
-    end
-  end
-
-  def line_to_cells([[x0, y0], [x1, y1]] = line) do
+  def line_to_cells([[x0, y0], [x1, y1]]) do
     cond do
-      y0 == y1 -> for x <- x0..x1, do: [x, y0]
-      x0 == x1 -> for y <- y0..y1, do: [x0, y]
-      true -> expand_diagonal(line)
+      y0 == y1 -> for x <- x0..x1, do: {x, y0}
+      x0 == x1 -> for y <- y0..y1, do: {x0, y}
+      true -> Enum.zip(x0..x1, y0..y1)
     end
   end
 
