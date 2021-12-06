@@ -7,15 +7,13 @@ defmodule Day6 do
     |> Enum.frequencies
   end
 
+  def sum_values(m1, m2), do: Map.merge(m1, m2, fn _k, v1, v2 -> v1 + v2 end)
+
+  def step_fun({0, value}, acc), do: sum_values(%{6 => value, 8 => value}, acc)
+  def step_fun({key, value}, acc), do: sum_values(%{key - 1 => value}, acc)
+
   def step(frequencies) do
-    frequencies
-    |> Enum.reduce(%{}, fn {key, value}, acc ->
-      case key do
-        0 -> Map.merge(%{6 => value, 8 => value}, acc, fn _k, v1, v2 -> v1 + v2 end)
-        _ -> Map.merge(%{key - 1 => value}, acc, fn _k, v1, v2 -> v1 + v2 end)
-      end
-    end)
-    |> Enum.into(%{})
+    Enum.reduce(frequencies, %{}, &step_fun/2)
   end
 
   def fish_after_days(days) do
