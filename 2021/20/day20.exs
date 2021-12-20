@@ -14,39 +14,32 @@ defmodule Day20 do
     |> String.replace("#", "1")
   end
 
+  def transpose(rows), do: rows |> List.zip
+
+  def int_to_key(int) do
+    int
+    |> Integer.to_string(2)
+    |> String.pad_leading(9, "0")
+    |> String.codepoints
+    |> Enum.chunk_every(3)
+    |> transpose
+  end
+
   def parse(input) do
     [img_enh_alg|img] = input
     |> String.split("\n", trim: true)
 
-    image = img
-            |> Enum.map(&string_to_int/1)
-    #   img
-    #   |> Enum.with_index(fn line, row ->
-    #     line
-    #     |> String.codepoints
-    #     |> Enum.map(&pixel_to_num/1)
-    #     |> Enum.with_index(fn pixel, col ->
-    #       %{{col, row} => pixel}
-    #     end)
-    #   |> Enum.reduce(&Map.merge/2)
-    # end)
-    # |> Enum.reduce(&Map.merge/2)
+    image = img |> Enum.map(&string_to_int/1)
+            |> Enum.map(&String.codepoints/1)
 
     algorithm = img_enh_alg
                 |> String.codepoints
-                |> Enum.with_index(fn pixel, index ->
-                  binary = Integer.to_string(index, 2)
-                  |> String.pad_leading(9, "0")
-                  # |> String.codepoints
-                  # |> Enum.chunk_every(3)
-                  # |> Enum.map(&Enum.join/1)
-                  %{ binary => pixel |> pixel_to_num }
+                |> Enum.with_index(fn pixel, num ->
+                  %{ int_to_key(num) => pixel_to_num(pixel) }
                 end)
                 |> Enum.reduce(&Map.merge/2)
-                # |> IO.inspect(label: "Alg")
 
-
-    {fn x -> Map.get(algorithm, x) end, image}
+    {fn x -> Map.get(algorithm, x, :miss) end, image}
   end
 
   def dimensions(image, elem) do
@@ -57,7 +50,7 @@ defmodule Day20 do
 
   def dimensions(image) do
     [
-      {0, (List.first(image) |> String.length) - 1},
+      {0, (List.first(image) |> Enum.count) - 1},
       {0, Enum.count(image) - 1}
     ]
   end
@@ -68,40 +61,28 @@ defmodule Day20 do
     |> String.to_integer(2)
   end
 
-  def neighbours(lines, {x, y}) do
-    # IO.inspect({x, y}, label: "Image for n #{x}, #{y}")
-    slices = Enum.map(lines, fn line ->
-      # line = bench(fn -> Enum.at(image, y0 + 2) end, "at")
-      # Enum.at(image, y0 + 2)
-             # |> IO.inspect(label: "Line")
-
-      # bench(fn -> String.slice(line, x + 2 - 1, 3) end, "slice")# |> IO.inspect(label: "Neighbours")
-      String.slice(line, x + 2 - 1, 3)
-      # Map.get(image, {x0, y0}, default)
-    end)
-    # bench(fn -> Enum.join(slices) end, "join")
-    Enum.join(slices)
+  def neighbours(lines, {x, _y}) do
+    Enum.slice(lines, x + 2 - 1, 3)
   end
 
   def update_default(default, img_enh_alg) do
     default
-    |> String.duplicate(9)
-    # |> List.duplicate(3)
+    |> List.duplicate(9)
+    |> Enum.chunk_every(3)
+    |> Enum.map(&List.to_tuple/1)
     |> img_enh_alg.()
   end
 
   def enhance_pixel(lines, {x, y}, img_enh_alg) do
-    # ns = bench(fn -> neighbours(lines, {x, y}) end, "neighbours #{x}, #{y}")
-    ns = neighbours(lines, {x, y})
-    # |> IO.inspect(label: "Neighbours")
-    img_enh_alg.(ns)
+    neighbours(lines, {x, y})
+    |> img_enh_alg.()
   end
 
   def grow_image(image, default) do
-    default_line = String.duplicate(default, (Enum.at(image, 0) |> String.length) + 4)
+    default_line = List.duplicate(default, (Enum.at(image, 0) |> Enum.count) + 4)
     [ default_line, default_line ] ++
       Enum.map(image, fn line ->
-        String.duplicate(default, 2) <> line <> String.duplicate(default, 2)
+        List.duplicate(default, 2) ++ line ++ List.duplicate(default, 2)
       end) ++
         [ default_line, default_line ]
   end
@@ -118,11 +99,12 @@ defmodule Day20 do
   def enhance({image, default}, img_enh_alg) do
     [{x_min, x_max}, {y_min, y_max}] = dimensions(image)
 
-    # padded_image = bench(fn -> grow_image(image, default) end, "Grow image")
     padded_image = grow_image(image, default)
     new_image = for y <- (y_min - 1)..(y_max + 1) do
       lines = Enum.slice(padded_image, y - 1 + 2, 3)
-      for x <- (x_min - 1)..(x_max + 1), into: "" do
+              |> Enum.zip
+
+      for x <- (x_min - 1)..(x_max + 1), into: [] do
         enhance_pixel(lines, {x, y}, img_enh_alg)
       end
     end
@@ -143,14 +125,12 @@ defmodule Day20 do
 
   def count_lit_pixels({image, _}) do
     Enum.map(image, fn line ->
-      String.codepoints(line)
+      # String.codepoints(line)
+      line
       |> Enum.map(&String.to_integer/1)
       |> Enum.sum
     end)
     |> Enum.sum
-    # Map.values(image)
-    # |> Enum.frequencies
-    # |> Map.get("1")
   end
 
   def run(input, iterations) do
