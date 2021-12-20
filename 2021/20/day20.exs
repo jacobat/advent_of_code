@@ -5,7 +5,7 @@ defmodule Day20 do
   end
 
   def pixel_to_num(pixel) do
-    if pixel == ".", do: "0", else: "1"
+    if pixel == ".", do: 0, else: 1
   end
 
   def string_to_int(s) do
@@ -30,6 +30,7 @@ defmodule Day20 do
     |> Integer.to_string(2)
     |> String.pad_leading(9, "0")
     |> String.codepoints
+    |> Enum.map(&String.to_integer/1)
     |> Enum.chunk_every(3)
     |> transpose
   end
@@ -39,7 +40,7 @@ defmodule Day20 do
     |> String.split("\n", trim: true)
 
     image = img |> Enum.map(&string_to_int/1)
-            |> Enum.map(&String.codepoints/1)
+            |> Enum.map(fn s -> String.codepoints(s) |> Enum.map(fn s -> String.to_integer(s) end) end)
 
     algorithm = img_enh_alg
                 |> String.codepoints
@@ -48,13 +49,7 @@ defmodule Day20 do
                 end)
                 |> Enum.reduce(&Map.merge/2)
 
-    {fn x -> Map.get(algorithm, x, :miss) end, image}
-  end
-
-  def window_to_number(window) do
-    window
-    |> Enum.join
-    |> String.to_integer(2)
+    {fn x -> Map.fetch!(algorithm, x) end, image}
   end
 
   def update_default(default, img_enh_alg) do
@@ -74,17 +69,29 @@ defmodule Day20 do
         [ default_line, default_line ]
   end
 
+  def map_chunks(enum, count, fun) do
+    chunk_fun = fn element, acc ->
+      if Enum.count(acc) == count - 1 do
+        l = [element|acc]
+        {:cont, fun.(Enum.reverse(l)), List.delete_at(l, -1)}
+      else
+        {:cont, [element|acc]}
+      end
+    end
+
+    after_fun = fn _ -> {:cont, []} end
+    Enum.chunk_while(enum, [], chunk_fun, after_fun)
+  end
+
   def enhance_lines(lines, img_enh_alg) do
     lines
     |> Enum.zip
-    |> Enum.chunk_every(3, 1, :discard)
-    |> Enum.map(img_enh_alg)
+    |> map_chunks(3, img_enh_alg)
   end
 
   def enhance({image, default}, img_enh_alg) do
     new_image = grow_image(image, default)
-                |> Enum.chunk_every(3, 1, :discard)
-                |> Enum.map(&enhance_lines(&1, img_enh_alg))
+                |> map_chunks(3, &enhance_lines(&1, img_enh_alg))
     { new_image, default |> update_default(img_enh_alg) }
   end
 
@@ -101,7 +108,6 @@ defmodule Day20 do
   def count_lit_pixels({image, _}) do
     Enum.map(image, fn line ->
       line
-      |> Enum.map(&String.to_integer/1)
       |> Enum.sum
     end)
     |> Enum.sum
@@ -109,8 +115,7 @@ defmodule Day20 do
 
   def run(input, iterations) do
     {img_enh_alg, image} = input |> parse
-    {image, "0"}
-    # |> enhance(img_enh_alg)
+    {image, 0}
     |> Stream.iterate(&enhance(&1, img_enh_alg))
     |> Stream.drop(iterations)
     |> Enum.take(1)
