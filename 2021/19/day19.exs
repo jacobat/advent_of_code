@@ -17,6 +17,7 @@ defmodule Day19 do
 
   def relatives(beacons) do
     beacons
+    |> Enum.drop(11)
     |> Enum.map(fn origin ->
       beacons
       |> Enum.map(fn beacon -> %{beacon: beacon, relative: diff(beacon, origin)} end)
@@ -121,7 +122,7 @@ defmodule Day19 do
     { "mapped", (mapped |> elem(1)) ++ (new_map |> elem(1)), [offset | offsets] }
     |> build_space(remaining_scanners)
   end
-  
+
   def build_space(input) do
     [ scanner0 | rest ] = input |> parse
     scanner0_relatives = scanner0 |> elem(1) |> relatives
