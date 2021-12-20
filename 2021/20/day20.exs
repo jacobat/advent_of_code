@@ -14,6 +14,15 @@ defmodule Day20 do
     |> String.replace("#", "1")
   end
 
+  def bench(fun, label) do
+    t0 = DateTime.now!("Etc/UTC")
+    result = fun.()
+    t1 = DateTime.now!("Etc/UTC")
+    DateTime.diff(t1, t0, :microsecond)
+    |> IO.inspect(label: label)
+    result
+  end
+
   def transpose(rows), do: rows |> List.zip
 
   def int_to_key(int) do
@@ -42,27 +51,10 @@ defmodule Day20 do
     {fn x -> Map.get(algorithm, x, :miss) end, image}
   end
 
-  def dimensions(image, elem) do
-    Map.keys(image)
-    |> Enum.map(&elem(&1, elem))
-    |> Enum.min_max
-  end
-
-  def dimensions(image) do
-    [
-      {0, (List.first(image) |> Enum.count) - 1},
-      {0, Enum.count(image) - 1}
-    ]
-  end
-
   def window_to_number(window) do
     window
     |> Enum.join
     |> String.to_integer(2)
-  end
-
-  def neighbours(lines, {x, _y}) do
-    Enum.slice(lines, x + 2 - 1, 3)
   end
 
   def update_default(default, img_enh_alg) do
@@ -70,11 +62,6 @@ defmodule Day20 do
     |> List.duplicate(9)
     |> Enum.chunk_every(3)
     |> Enum.map(&List.to_tuple/1)
-    |> img_enh_alg.()
-  end
-
-  def enhance_pixel(lines, {x, y}, img_enh_alg) do
-    neighbours(lines, {x, y})
     |> img_enh_alg.()
   end
 
@@ -87,45 +74,32 @@ defmodule Day20 do
         [ default_line, default_line ]
   end
 
-  def bench(fun, label) do
-    t0 = DateTime.now!("Etc/UTC")
-    result = fun.()
-    t1 = DateTime.now!("Etc/UTC")
-    DateTime.diff(t1, t0, :microsecond)
-    |> IO.inspect(label: label)
-    result
+  def enhance_lines(lines, img_enh_alg) do
+    lines
+    |> Enum.zip
+    |> Enum.chunk_every(3, 1, :discard)
+    |> Enum.map(img_enh_alg)
   end
 
   def enhance({image, default}, img_enh_alg) do
-    [{x_min, x_max}, {y_min, y_max}] = dimensions(image)
-
-    padded_image = grow_image(image, default)
-    new_image = for y <- (y_min - 1)..(y_max + 1) do
-      lines = Enum.slice(padded_image, y - 1 + 2, 3)
-              |> Enum.zip
-
-      for x <- (x_min - 1)..(x_max + 1), into: [] do
-        enhance_pixel(lines, {x, y}, img_enh_alg)
-      end
-    end
+    new_image = grow_image(image, default)
+                |> Enum.chunk_every(3, 1, :discard)
+                |> Enum.map(&enhance_lines(&1, img_enh_alg))
     { new_image, default |> update_default(img_enh_alg) }
   end
 
-  def display({image, default} = input) do
-    [{x_min, x_max}, {y_min, y_max}] = dimensions(image)
-    for y <- (y_min - 2)..(y_max + 2) do
-      for x <- (x_min - 2)..(x_max + 2) do
-        if Map.get(image, {x, y}, default) == "1", do: "#", else: "."
-      end
-      |> Enum.join
-      |> IO.puts
-    end
+  def display({image, _default} = input) do
+    image
+    |> Enum.map(&Enum.join/1)
+    |> Enum.join("\n")
+    |> String.replace("0", ".")
+    |> String.replace("1", "#")
+    |> IO.puts
     input
   end
 
   def count_lit_pixels({image, _}) do
     Enum.map(image, fn line ->
-      # String.codepoints(line)
       line
       |> Enum.map(&String.to_integer/1)
       |> Enum.sum
@@ -141,7 +115,7 @@ defmodule Day20 do
     |> Stream.drop(iterations)
     |> Enum.take(1)
     |> List.first
-    # # |> display
+    # |> display
     |> count_lit_pixels
   end
 
